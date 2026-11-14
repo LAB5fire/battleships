@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Fleet Fury — Battleships with an arsenal</title>
+  <meta name="description" content="1v1 online battleships with nukes, bombers, sonar, sea mines, shields and more. Private rooms with a code, best-of rounds and a buy phase.">
+  <meta name="theme-color" content="#06101f">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%E2%9A%93%3C/text%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Russo+One&display=swap">
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <div id="app">
+    <!-- ============================== HOME -->
+    <section id="screen-home" class="screen">
+      <div class="home-wrap">
+        <div class="hero">
+          <div class="hero-badge">⚓</div>
+          <h1 class="logo">FLEET <span>FURY</span></h1>
+          <p class="tagline">Battleships with an arsenal. Nukes, bombers, sonar, sea mines, shields and more. 1v1 with a friend in a private room.</p>
+        </div>
+
+        <div class="home-grid">
+          <div class="card">
+            <label class="field">
+              <span class="field-label">Captain name</span>
+              <input id="name-input" maxlength="16" placeholder="Captain" autocomplete="nickname">
+            </label>
+            <div id="rejoin-slot"></div>
+            <h2 class="card-title">Create a private room</h2>
+            <div id="settings-form" class="settings-form"></div>
+            <button id="create-btn" class="btn btn-primary btn-big">Create room</button>
+          </div>
+
+          <div class="card">
+            <h2 class="card-title">Join a friend</h2>
+            <p class="muted small">Enter the 5-letter room code your friend sent you.</p>
+            <input id="code-input" class="code-input" maxlength="5" placeholder="CODE" autocomplete="off" autocapitalize="characters" spellcheck="false" inputmode="text">
+            <button id="join-btn" class="btn btn-big">Join room</button>
+            <div class="home-howto">
+              <button id="howto-btn" class="btn btn-ghost">📖 How to play &amp; all items</button>
+            </div>
+          </div>
+        </div>
+        <p class="footnote">Each round has a buy phase, then the battle. Win rounds to win the match.</p>
+      </div>
+    </section>
+
+    <!-- ============================== LOBBY -->
+    <section id="screen-lobby" class="screen">
+      <div class="lobby-wrap">
+        <div class="card lobby-card">
+          <p class="eyebrow">Private room code</p>
+          <div id="lobby-code" class="room-code">-----</div>
+          <div class="lobby-actions">
+            <button id="copy-code" class="btn">📋 Copy code</button>
+            <button id="copy-link" class="btn btn-primary">🔗 Copy invite link</button>
+          </div>
+          <div class="radar" aria-hidden="true"><div class="radar-sweep"></div><div class="radar-blip"></div></div>
+          <p class="waiting">Waiting for your opponent to join…</p>
+          <div id="lobby-settings" class="chips"></div>
+          <button id="lobby-leave" class="btn btn-ghost">Leave room</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================== GAME -->
+    <section id="screen-game" class="screen">
+      <header class="hud">
+        <div class="hud-left">
+          <span class="hud-logo">FLEET <span>FURY</span></span>
+          <span id="hud-round" class="pill"></span>
+        </div>
+        <div id="hud-score" class="hud-score"></div>
+        <div class="hud-right">
+          <span id="hud-net" class="net-dot" title="Connection"></span>
+          <span id="hud-coins" class="coins" title="Your coins"></span>
+          <button id="sound-btn" class="icon-btn" title="Sound on/off">🔊</button>
+          <button id="help-btn" class="icon-btn" title="How to play">❔</button>
+          <button id="leave-btn" class="icon-btn" title="Leave room">🚪</button>
+        </div>
+      </header>
+      <div id="prep-view" class="view"></div>
+      <div id="battle-view" class="view"></div>
+    </section>
+  </div>
+
+  <div id="modal-root"></div>
+  <div id="toasts" aria-live="polite"></div>
+  <div id="banner" aria-live="polite"></div>
+  <div id="offline" class="offline" hidden>Reconnecting to the server…</div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script type="module" src="/js/main.js"></script>
+</body>
+</html>

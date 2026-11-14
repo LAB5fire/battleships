@@ -1,0 +1,24 @@
+{
+  "name": "fleet-fury",
+  "version": "1.0.0",
+  "description": "Online 1v1 battleships with an arsenal: bombs, planes, intel and defenses. Private rooms with codes, rounds with a buy phase.",
+  "type": "module",
+  "main": "server/index.js",
+  "scripts": {
+    "start": "node server/index.js",
+    "dev": "node --watch server/index.js",
+    "test": "node --test"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "license": "MIT",
+  "private": true,
+  "dependencies": {
+    "express": "^4.22.3",
+    "socket.io": "^4.8.4"
+  },
+  "devDependencies": {
+    "socket.io-client": "^4.8.4"
+  }
+}

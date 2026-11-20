@@ -93,3 +93,24 @@ export function shapeCells(shape, size, r, c) {
 
 export const laneLabel = (size, r, c, dir) =>
   dir === 'right' || dir === 'left' ? `row ${r + 1}` : `column ${colLabel(c)}`;
+
+// The 8 cells around i (diagonals included), inside the board.
+export function neighborCells(size, i) {
+  const r = Math.floor(i / size);
+  const c = i % size;
+  const out = [];
+  for (let dr = -1; dr <= 1; dr++) {
+    for (let dc = -1; dc <= 1; dc++) {
+      if (!dr && !dc) continue;
+      const rr = r + dr;
+      const cc = c + dc;
+      if (rr >= 0 && cc >= 0 && rr < size && cc < size) out.push(rr * size + cc);
+    }
+  }
+  return out;
+}
+
+// True if any of `cells` is on, or next to (diagonals too), a cell in `taken`.
+export function touchesAny(size, cells, taken) {
+  return cells.some((i) => taken.has(i) || neighborCells(size, i).some((n) => taken.has(n)));
+}

@@ -210,7 +210,7 @@ export class Room {
   battleAction(seat, action) {
     this.requirePhase('battle');
     if (!this.players.every((p) => p.connected)) throw new GameError('Wait for your opponent to reconnect.');
-    const before = this.battle.turnNo;
+    const before = this.battle.step;
     const ctx = this.battle.act(seat, action);
     this.touch();
     this.afterBattleStep(ctx, before);
@@ -221,7 +221,7 @@ export class Room {
       this.endRound(ctx);
       return;
     }
-    if (this.battle.turnNo !== turnBefore) this.startTurnTimer();
+    if (this.battle.step !== turnBefore) this.startTurnTimer();
     this.sync(ctx.events);
   }
 
@@ -283,7 +283,7 @@ export class Room {
     const secs = this.settings.turnTimer;
     if (!secs || this.phase !== 'battle' || !this.battle || this.players.length < 2) return;
     if (!this.players.every((p) => p.connected)) return;
-    const turnNo = this.battle.turnNo;
+    const turnNo = this.battle.step;
     this.deadline = Date.now() + secs * 1000;
     this.timer = setTimeout(() => this.onTimeout(turnNo), secs * 1000 + 250);
   }
@@ -297,7 +297,7 @@ export class Room {
   onTimeout(turnNo) {
     this.timer = null;
     this.deadline = null;
-    if (this.phase !== 'battle' || !this.battle || this.battle.winner !== null || this.battle.turnNo !== turnNo) return;
+    if (this.phase !== 'battle' || !this.battle || this.battle.winner !== null || this.battle.step !== turnNo) return;
     try {
       const ctx = this.battle.autoShot(this.battle.turn);
       this.afterBattleStep(ctx, turnNo);

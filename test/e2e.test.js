@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { io as connect } from 'socket.io-client';
 import { startServer } from '../server/index.js';
 import { randomFleet } from '../shared/layout.js';
-import { VIEW, toRC } from '../shared/geometry.js';
+import { VIEW, toRC, touchesAny } from '../shared/geometry.js';
 
 let srv;
 before(async () => { srv = await startServer(0); });
@@ -46,7 +46,7 @@ function layoutFor(state, { decoys = 0, mines = 0 } = {}) {
   for (let i = 0; i < size * size; i++) if (!used.has(i) && !used.has(i + 1) && (i % size) < size - 1) free.push(i);
   const out = { ships, decoys: [], mines: [] };
   for (let k = 0; k < decoys; k++) {
-    const i = free.find((x) => !used.has(x) && !used.has(x + 1));
+    const i = free.find((x) => !touchesAny(size, [x, x + 1], used));
     used.add(i); used.add(i + 1);
     const [r, c] = toRC(size, i);
     out.decoys.push({ r, c, dir: 'h' });
@@ -166,7 +166,7 @@ test('full best-of-3 match between two connected players', async () => {
 
     if (!timeoutTested && actions === 10) {
       // Simulate the turn timer running out.
-      room.onTimeout(room.battle.turnNo);
+      room.onTimeout(room.battle.step);
       timeoutTested = true;
       assert.ok(actor.state.rev === room.rev || (await waitFor(actor, (s) => s.rev === room.rev)));
     } else {

@@ -7,7 +7,8 @@ Play with a friend in a private room using a 5-letter code.
 
 - **Best of 3 / 5 / 7 rounds** (the host chooses when creating the room, along with the board size, starting coins and an optional turn timer).
 - **Every round:** Armory (buy phase) → deploy your fleet (+ decoys and mines) → battle.
-- **Your turn:** use up to one *tactical* item (intel or defense), then make one *attack*: a free standard shot or an attack item.
+- **Your turn:** use up to one *tactical* item (intel or defense), then make one *attack*: a free standard shot or an attack item. If a standard shot hits, you fire again.
+- **Placement:** ships (and decoys) can't touch each other, not even diagonally.
 - **Coins:** +10 per hit and +30 per sink. Winning a round pays +200; losing pays +150, plus 50 more for each loss in a row (up to 300). Coins are paid out at the end of the round, and unused items carry over.
 
 ### The 21 items

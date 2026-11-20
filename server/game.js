@@ -1,7 +1,7 @@
 // Core battle rules. Pure game logic, no networking.
 import {
   VIEW, LANE_DIRS, toIdx, toRC, inBounds, shipCells, squareCells, crossCells,
-  lineCells, lanePath, cellLabel, colLabel, laneLabel,
+  lineCells, lanePath, cellLabel, colLabel, laneLabel, neighborCells, touchesAny,
 } from '../shared/geometry.js';
 import { ITEM_MAP } from '../shared/items.js';
 import { ECONOMY } from '../shared/config.js';
@@ -67,10 +67,13 @@ export function buildBoard(size, fleet, layout, inventory = {}) {
 
   const board = createBoard(size);
   const used = new Set();
-  const claim = (cells, what) => {
+  const hulls = new Set(); // cells of ships and decoys, which may not touch each other
+  const claim = (cells, what, vessel = true) => {
     if (!cells) throw new GameError(`${what} doesn't fit on the board.`);
     for (const i of cells) if (used.has(i)) throw new GameError(`${what} overlaps something else.`);
+    if (vessel && touchesAny(size, cells, hulls)) throw new GameError(`${what} is touching another ship. Ships need at least one empty cell between them.`);
     for (const i of cells) used.add(i);
+    if (vessel) for (const i of cells) hulls.add(i);
   };
   const cellsFor = (p, len) => (p && typeof p === 'object' && inBounds(size, p.r, p.c)
     ? shipCells(size, p.r, p.c, p.dir === 'v' ? 'v' : 'h', len)
@@ -92,7 +95,7 @@ export function buildBoard(size, fleet, layout, inventory = {}) {
   for (const m of mines) {
     if (!m || typeof m !== 'object' || !inBounds(size, m.r, m.c)) throw new GameError('A mine is off the board.');
     const i = toIdx(size, m.r, m.c);
-    claim([i], 'A mine');
+    claim([i], 'A mine', false);
     board.mines.add(i);
   }
   return board;
@@ -178,6 +181,7 @@ export class Battle {
     this.players = players;
     this.turn = first;
     this.turnNo = 1;
+    this.step = 1; // bumps on every new turn and every bonus strike
     this.tacticalUsed = false;
     this.winner = null;
     this.earned = [0, 1].map(() => ({ hits: 0, sinks: 0, coins: 0 }));
@@ -345,7 +349,7 @@ export class Battle {
       anyHit([res]) ? 'good' : 'info',
       anyDamage([res], 'def') ? 'bad' : 'info',
     );
-    this.afterAttack(ctx, seat);
+    this.afterAttack(ctx, seat, ['hit', 'sunk', 'decoy'].includes(res.result));
   }
 
   doItem(ctx, seat, a) {
@@ -390,12 +394,20 @@ export class Battle {
     else this.tacticalUsed = true;
   }
 
-  afterAttack(ctx, seat) {
+  // bonus = a standard shot hit something, so the shooter fires again.
+  afterAttack(ctx, seat, bonus = false) {
     ctx.flush();
     const def = 1 - seat;
     if (fleetDestroyed(this.boards[def])) { this.winner = seat; return; }
     this.resolveCounters(ctx);
     if (this.winner !== null) return;
+    this.step += 1;
+    if (bonus) {
+      ctx.all({ type: 'bonus', seat });
+      ctx.say(seat, '🔁 Direct hit! Fire again.', '🔁 The enemy hit, so they fire again.', 'good', 'warn');
+      ctx.flush();
+      return;
+    }
     this.turn = def;
     this.turnNo += 1;
     this.tacticalUsed = false;
@@ -853,6 +865,8 @@ const EFFECTS = {
         }
       }
       if (cells.every((c, k) => c === v.cells[k])) throw new GameError('Move it somewhere new.');
+      const near = cells.some((i) => neighborCells(bt.size, i).some((n) => b.owner[n] >= 0 && b.owner[n] !== vi));
+      if (near) throw new GameError("Ships can't touch each other. Leave an empty cell around it.");
       return { vi, vessel: v, cells, dir, idx: null, primary: null };
     },
     run(bt, ctx, seat, p) {

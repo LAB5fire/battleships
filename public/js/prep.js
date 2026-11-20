@@ -2,7 +2,7 @@
 import { h, $, toast, setChildren, fmt } from './ui.js';
 import { BoardView } from './board.js';
 import { ITEMS, ITEM_MAP, CATEGORIES } from '/shared/items.js';
-import { shipCells, toIdx, toRC } from '/shared/geometry.js';
+import { shipCells, toIdx, toRC, touchesAny } from '/shared/geometry.js';
 import { randomFleet } from '/shared/layout.js';
 import { session } from './session.js';
 import { sfx } from './sound.js';
@@ -127,9 +127,12 @@ export class PrepView {
     const inv = this.st.me.inventory;
     const size = this.size;
     const used = new Set();
-    const claim = (cells) => {
+    const hulls = new Set();
+    const claim = (cells, vessel = true) => {
       if (!cells || cells.some((i) => used.has(i))) return false;
+      if (vessel && touchesAny(size, cells, hulls)) return false;
       for (const i of cells) used.add(i);
+      if (vessel) for (const i of cells) hulls.add(i);
       return true;
     };
     const ships = {};
@@ -144,7 +147,7 @@ export class PrepView {
     const mines = [];
     for (const m of this.draft.mines || []) {
       const inside = m.r >= 0 && m.c >= 0 && m.r < size && m.c < size;
-      if (mines.length < (inv.mine || 0) && inside && claim([toIdx(size, m.r, m.c)])) mines.push(m);
+      if (mines.length < (inv.mine || 0) && inside && claim([toIdx(size, m.r, m.c)], false)) mines.push(m);
     }
     this.draft = { ships, decoys, mines };
   }
@@ -179,7 +182,17 @@ export class PrepView {
     if (dir === 'h') c = Math.min(c, size - len); else r = Math.min(r, size - len);
     const cells = shipCells(size, r, c, dir, len);
     const occ = this.occupancy();
-    const valid = Boolean(cells) && cells.every((x) => !occ.has(x));
+    let valid = Boolean(cells) && cells.every((x) => !occ.has(x));
+    if (valid && this.sel.kind !== 'mine') {
+      // Ships and decoys need an empty cell around them (diagonals too). Mines may sit right next to them.
+      const hulls = new Set();
+      for (const [x, o] of occ) {
+        if (o.kind === 'mine') continue;
+        if (this.sel.kind === o.kind && this.sel.kind === 'ship' && this.sel.type === o.key) continue;
+        hulls.add(x);
+      }
+      valid = !touchesAny(size, cells, hulls);
+    }
     return { r, c, dir, cells: cells || [], valid };
   }
 
@@ -285,9 +298,10 @@ export class PrepView {
   randomize() {
     const size = this.size;
     const blocked = new Set();
-    this.draft.decoys.forEach((d) => shipCells(size, d.r, d.c, d.dir, 2)?.forEach((i) => blocked.add(i)));
+    const hulls = new Set();
+    this.draft.decoys.forEach((d) => shipCells(size, d.r, d.c, d.dir, 2)?.forEach((i) => hulls.add(i)));
     this.draft.mines.forEach((m) => blocked.add(toIdx(size, m.r, m.c)));
-    const ships = randomFleet(size, this.st.fleet, blocked);
+    const ships = randomFleet(size, this.st.fleet, blocked, Math.random, hulls);
     if (!ships) { toast('Could not fit the fleet. Clear some decoys or mines.', 'warn'); return; }
     this.draft.ships = Object.fromEntries(ships.map((s) => [s.type, { r: s.r, c: s.c, dir: s.dir }]));
     this.sel = null;

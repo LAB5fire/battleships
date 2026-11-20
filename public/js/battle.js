@@ -802,6 +802,10 @@ export class BattleView {
           if (e.item === 'nuke') fx.banner('☢️ NUKE INCOMING', '', 'bad', 1300);
           break;
         }
+        case 'bonus':
+          if (e.seat === me) later(delay + 300, () => { fx.banner('HIT! FIRE AGAIN', '', 'good', 1000); sfx('turn'); });
+          else later(delay + 300, () => toast('Enemy hit, so they fire again!', 'warn', 1800));
+          break;
         case 'turn':
           if (e.seat === me) later(delay + 300, () => { fx.banner('YOUR TURN', '', 'good', 1000); sfx('turn'); });
           break;

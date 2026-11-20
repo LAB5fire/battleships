@@ -85,12 +85,15 @@ test('random fleets are always valid on every board size', () => {
   }
 });
 
-test('shots hit, miss, pass the turn and cannot repeat', () => {
+test('a hit fires again, a miss passes the turn, cells cannot repeat', () => {
   const { bt, boards } = setup();
   assert.throws(() => shot(bt, 1, 0, 0), /not your turn/);
-  shot(bt, 0, 0, 0);
+  const ctx = shot(bt, 0, 0, 0);
   assert.equal(boards[1].view[I(0, 0)], VIEW.HIT);
-  assert.equal(bt.turn, 1);
+  assert.equal(bt.turn, 0, 'a hit keeps the turn');
+  assert.ok(ctx.events[1].some((e) => e.type === 'bonus' && e.seat === 0));
+  shot(bt, 0, 9, 9);
+  assert.equal(bt.turn, 1, 'a miss passes the turn');
   shot(bt, 1, 5, 5);
   assert.equal(boards[0].view[I(5, 5)], VIEW.MISS);
   assert.throws(() => shot(bt, 0, 0, 0), /already know/);
@@ -103,7 +106,7 @@ test('sinking every real ship wins the round, decoys do not count', () => {
   for (const i of targets) {
     shot(bt, 0, Math.floor(i / SIZE), i % SIZE);
     if (bt.winner !== null) break;
-    pass(bt, 1);
+    assert.equal(bt.turn, 0, 'every hit fires again');
   }
   assert.equal(bt.winner, 0);
   assert.ok(fleetDestroyed(boards[1]));
@@ -146,7 +149,7 @@ test('decoys look like hits to the attacker until destroyed', () => {
   assert.equal(atk.result, 'hit');
   assert.equal(def.result, 'decoyhit');
   assert.equal(boards[1].view[I(9, 5)], VIEW.HIT);
-  pass(bt, 1);
+  assert.equal(bt.turn, 0, 'a decoy hit also fires again, so it looks real');
   const ctx2 = shot(bt, 0, 9, 6);
   assert.equal(ctx2.events[0].find((e) => e.type === 'strike').result, 'decoy');
   assert.equal(boards[1].view[I(9, 5)], VIEW.DECOY);
@@ -264,6 +267,9 @@ test('recon plane reveals a column, tactical limit is one per turn', () => {
   for (let r = 0; r < 10; r++) assert.equal(boards[1].view[I(r, 0)], r % 2 === 0 && r < 9 ? VIEW.SPOTTED : VIEW.CLEAR);
   assert.throws(() => use(bt, 0, 'recon', { r: 0, c: 5, orient: 'v' }), /already used a tactical/);
   shot(bt, 0, 2, 0);
+  assert.equal(bt.turn, 0, 'hit on a spotted part fires again');
+  assert.throws(() => use(bt, 0, 'recon', { r: 0, c: 5, orient: 'v' }), /already used a tactical/);
+  pass(bt, 0);
   assert.equal(bt.turn, 1);
 });
 
@@ -309,7 +315,8 @@ test('radar spots mines', () => {
 test('evasive maneuver moves an undamaged ship onto unknown cells only', () => {
   const { bt, boards } = setup({ invA: { radar: 1 }, invB: { evasive: 2 }, first: 0 });
   use(bt, 0, 'radar', { r: 8, c: 4 }); // scans rows 7-9, cols 3-5
-  shot(bt, 0, 8, 0); // hits the destroyer
+  shot(bt, 0, 8, 0); // hits the destroyer, so player 0 fires again
+  shot(bt, 0, 5, 9); // a miss passes the turn
   assert.throws(() => use(bt, 1, 'evasive', { shipId: 'destroyer', r: 8, c: 7, dir: 'h' }), /undamaged/);
   assert.throws(() => use(bt, 1, 'evasive', { shipId: 'submarine', r: 8, c: 3, dir: 'h' }), /never hit or scanned/);
   use(bt, 1, 'evasive', { shipId: 'submarine', r: 7, c: 7, dir: 'h' });
@@ -317,6 +324,26 @@ test('evasive maneuver moves an undamaged ship onto unknown cells only', () => {
   assert.deepEqual(sub.cells, [I(7, 7), I(7, 8), I(7, 9)]);
   assert.equal(boards[1].owner[I(6, 0)], -1);
   assert.equal(boards[1].owner[I(7, 8)], boards[1].vessels.indexOf(sub));
+  pass(bt, 1);
+  pass(bt, 0);
+  assert.throws(() => use(bt, 1, 'evasive', { shipId: 'cruiser', r: 6, c: 4, dir: 'h' }), /touch/);
+});
+
+test('ships and decoys cannot touch, even diagonally; mines can', () => {
+  const side = rowsLayout();
+  side.ships[4] = { type: 'destroyer', r: 8, c: 5, dir: 'h' }; // well clear of everything
+  assert.ok(buildBoard(SIZE, FLEET, side));
+  const adjacent = rowsLayout();
+  adjacent.ships[4] = { type: 'destroyer', r: 7, c: 0, dir: 'h' }; // right under the submarine
+  assert.throws(() => buildBoard(SIZE, FLEET, adjacent), /touching/);
+  const diagonal = rowsLayout();
+  diagonal.ships[4] = { type: 'destroyer', r: 7, c: 3, dir: 'h' }; // corner to corner with the submarine end (6,2)
+  assert.throws(() => buildBoard(SIZE, FLEET, diagonal), /touching/);
+  const sideBySide = rowsLayout();
+  sideBySide.ships[4] = { type: 'destroyer', r: 6, c: 3, dir: 'h' };
+  assert.throws(() => buildBoard(SIZE, FLEET, sideBySide), /touching/);
+  assert.throws(() => buildBoard(SIZE, FLEET, rowsLayout({ decoys: [{ r: 9, c: 0, dir: 'h' }] }), { decoy: 1 }), /touching/);
+  assert.ok(buildBoard(SIZE, FLEET, rowsLayout({ mines: [{ r: 1, c: 0 }] }), { mine: 1 }), 'mines may sit next to ships');
 });
 
 test('flak cannon shoots down planes, interceptor stops missiles but not torpedoes', () => {
